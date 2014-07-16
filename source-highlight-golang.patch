@@ -1,0 +1,166 @@
+commit b7bc5ddcef76b9b894bc5ec45852332978974d5f
+Author: Peter Eisentraut <peter@eisentraut.org>
+Date:   Thu Apr 25 22:43:04 2013 -0400
+
+    Add support for Go language
+
+diff --git a/src/Makefile.am b/src/Makefile.am
+index 5c18281..2276bbf 100644
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -85,7 +85,7 @@ manifest.lang asm.lang todo.lang applescript.lang \
+ vbscript.lang awk.lang bat.lang clipper.lang cobol.lang d.lang \
+ errors.lang erlang.lang proto.lang vala.lang lisp.lang islisp.lang \
+ scheme.lang po.lang opa.lang javalog.lang upc.lang tml.lang \
+-lilypond.lang coffeescript.lang
++lilypond.lang coffeescript.lang go.lang
+ 
+ LANGFILES_NOTTOCHECK= \
+ tml_formatting_all.lang  tml_macrolinks.lang      tml_macrosdelayed2.lang \
+diff --git a/src/go.lang b/src/go.lang
+new file mode 100644
+index 0000000..dadb10f
+--- /dev/null
++++ b/src/go.lang
+@@ -0,0 +1,35 @@
++# see http://golang.org/ref/spec
++
++include "c_comment.lang"
++
++label = '^[[:blank:]]*[[:alnum:]]+:[[:blank:]]*\z'
++
++(keyword,normal,classname) =
++  `(\<(?:interface|struct))([[:blank:]]+)([[:alnum:]_]+)`
++
++environment string delim "\"" "\"" escape "\\" begin
++  specialchar = '\\.'
++end
++environment string delim "'" "'" escape "\\" begin
++  specialchar = '\\.'
++end
++string delim "`" "`"  multiline
++
++keyword = "break|case|chan|const|continue|default|defer|else|fallthrough",
++	"for|func|go|goto|if|import|interface|map|package|range|return",
++	"select|struct|switch|type|var"
++
++type = "bool",
++	"uint8|uint16|uint32|uint64|int8|int16|int32|int64|float32|float64|complex64|complex128|byte|rune",
++	"string"
++
++include "number.lang"
++
++symbol = "+","-","*","/","%","&","\|","^","<<",">>","&^",
++       "+=","-=","*=","/=","%=","&=","\|=","^=","<<=",">>=","&^=",
++       "&&","\|\|","<-","++","--","==","<",">","=","!",
++       "!=","<=",">=",":=","...","(",")","[","]",",",".",";",":"
++
++cbracket = "{|}"
++
++function = '([[:alpha:]]|_)[[:word:]:]*(?=\()'
+diff --git a/src/lang.map b/src/lang.map
+index a245f13..d51d69d 100644
+--- a/src/lang.map
++++ b/src/lang.map
+@@ -8,6 +8,7 @@ coffee = coffeescript.lang
+ coffeescript = coffeescript.lang
+ cs = csharp.lang
+ csharp = csharp.lang
++go = go.lang
+ h = cpp.lang
+ hh = cpp.lang
+ H = cpp.lang
+@@ -157,4 +158,4 @@ javalog = javalog.lang
+ upc = upc.lang
+ tml = tml.lang
+ lilypond = lilypond.lang
+-ly = lilypond.lang
+\ No newline at end of file
++ly = lilypond.lang
+diff --git a/tests/Makefile.am b/tests/Makefile.am
+index bd89b15..460771a 100644
+--- a/tests/Makefile.am
++++ b/tests/Makefile.am
+@@ -254,6 +254,7 @@ test.bib test.bib.html \
+ test.makefile test.makefile.html \
+ test.css test.css.html \
+ test.ps test.ps.html \
++test.go test.go.html \
+ $(WRONGFILES) \
+ $(WRONGFILESOUT) \
+ $(WRONGSTYLES) $(WRONGSTYLESOUT) \
+@@ -421,6 +422,7 @@ check_makefile \
+ check_asm \
+ check_css \
+ check_ps \
++check_go \
+ check_docbook \
+ check_namedgroups \
+ check_slang \
+@@ -965,6 +967,11 @@ check_ps:
+ 	@echo expect no output from diff
+ 	$(DIFF) $(srcdir)/test.ps.html test.ps.out.html
+ 
++check_go:
++	$(PROGNAME) -i $(srcdir)/test.go -o test.go.out.html
++	@echo expect no output from diff
++	$(DIFF) $(srcdir)/test.go.html test.go.out.html
++
+ check_lang:
+ 	$(LANG2HTML) -i $(top_srcdir)/src/log.lang -o log.lang.out.html
+ 	$(LANG2HTML) -i $(top_srcdir)/src/c.lang -o c.lang.out.html
+diff --git a/tests/lang.list b/tests/lang.list
+index 77a9ab1..7a30d69 100644
+--- a/tests/lang.list
++++ b/tests/lang.list
+@@ -47,6 +47,7 @@ flex = flex.lang
+ fortran = fortran.lang
+ free-fortran = fortran.lang
+ glsl = glsl.lang
++go = go.lang
+ h = cpp.lang
+ haskell = haskell.lang
+ haxe = haxe.lang
+diff --git a/tests/test.go b/tests/test.go
+new file mode 100644
+index 0000000..e390fc0
+--- /dev/null
++++ b/tests/test.go
+@@ -0,0 +1,13 @@
++// Example Go file for source-highlight.
++
++package main
++
++import "fmt"
++
++func main() {
++	var words = []string{"foo", "bar", "baz"}
++	greeting := `Hello`
++	for _, word := range words {
++		fmt.Printf("%s, %s!\n", greeting, word)
++	}
++}
+diff --git a/tests/test.go.html b/tests/test.go.html
+new file mode 100644
+index 0000000..a44bfc6
+--- /dev/null
++++ b/tests/test.go.html
+@@ -0,0 +1,18 @@
++<!-- Generator: GNU source-highlight 
++by Lorenzo Bettini
++http://www.lorenzobettini.it
++http://www.gnu.org/software/src-highlite -->
++<pre><tt><i><font color="#9A1900">// Example Go file for source-highlight.</font></i>
++
++<b><font color="#0000FF">package</font></b> main
++
++<b><font color="#0000FF">import</font></b> <font color="#FF0000">"fmt"</font>
++
++<b><font color="#0000FF">func</font></b> <b><font color="#000000">main</font></b><font color="#990000">()</font> <font color="#FF0000">{</font>
++	<b><font color="#0000FF">var</font></b> words <font color="#990000">=</font> <font color="#990000">[]</font><font color="#009900">string</font><font color="#FF0000">{</font><font color="#FF0000">"foo"</font><font color="#990000">,</font> <font color="#FF0000">"bar"</font><font color="#990000">,</font> <font color="#FF0000">"baz"</font><font color="#FF0000">}</font>
++	greeting <font color="#990000">:=</font> <font color="#FF0000">`Hello`</font>
++	<b><font color="#0000FF">for</font></b> _<font color="#990000">,</font> word <font color="#990000">:=</font> <b><font color="#0000FF">range</font></b> words <font color="#FF0000">{</font>
++		fmt<font color="#990000">.</font><b><font color="#000000">Printf</font></b><font color="#990000">(</font><font color="#FF0000">"%s, %s!\n"</font><font color="#990000">,</font> greeting<font color="#990000">,</font> word<font color="#990000">)</font>
++	<font color="#FF0000">}</font>
++<font color="#FF0000">}</font>
++</tt></pre>
